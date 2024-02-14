@@ -63,8 +63,14 @@ LIMIT 10;
 --Answer: INSULIN GLARGINE,HUM.REC.ANLOG
 
 --B. Which drug (generic_name) has the hightest total cost per day? **Bonus: Round your cost per day column to 2 decimal places. Google ROUND to see how this works.**
-
-
+--This maybe?
+SELECT drug.generic_name, SUM((prescription.total_drug_cost)/30)
+FROM prescription
+	INNER JOIN drug
+	ON prescription.drug_name = drug.drug_name
+GROUP BY drug.generic_name
+ORDER BY SUM((prescription.total_drug_cost)/30) DESC
+LIMIT 10;
 
 
 
