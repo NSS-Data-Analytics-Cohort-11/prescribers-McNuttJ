@@ -98,5 +98,25 @@ GROUP BY drug_type
 ORDER BY total_drug_cost DESC;
 --ANSWER: Opioids, $105,080,626.37
 
-select *
-FROM prescription
+--Question 5.
+--A. How many CBSAs are in Tennessee? **Warning:** The cbsa table contains information for all states, not just Tennessee.
+SELECT COUNT(cbsa)
+FROM cbsa
+WHERE cbsaname LIKE '%TN%'
+--Answer: 56
+
+--B. Which cbsa has the largest combined population? Which has the smallest? Report the CBSA name and total population.
+SELECT cbsa.cbsaname, SUM(population.population)
+FROM cbsa
+	INNER JOIN population
+	ON cbsa.fipscounty = population.fipscounty
+WHERE population.population IS NOT NULL
+GROUP BY cbsa.cbsaname
+ORDER BY SUM(population.population) DESC;
+--ANSWER: Largest Population = Nashville-Davidson--Murfreesboro--Franklin, TN, Smallest Population = Morristown, TN
+
+--C. What is the largest (in terms of population) county which is not included in a CBSA? Report the county name and population.
+--sub query counties not in cbsa???
+SELECT population.population
+
+
