@@ -199,8 +199,39 @@ ORDER BY p.total_claim_count DESC;
 --Question 7 The goal of this exercise is to generate a full list of all pain management specialists in Nashville and the number of claims they had for each opioid. **Hint:** The results from all 3 parts will have 637 rows.
 
 --A. First, create a list of all npi/drug_name combinations for pain management specialists (specialty_description = 'Pain Management) in the city of Nashville (nppes_provider_city = 'NASHVILLE'), where the drug is an opioid (opiod_drug_flag = 'Y'). **Warning:** Double-check your query before running it. You will only need to use the prescriber and drug tables since you don't need the claims numbers yet.
+SELECT npi, drug_name
+FROM prescriber
+CROSS JOIN drug
+WHERE specialty_description = 'Pain Management'
+	AND nppes_provider_city = 'NASHVILLE'
+	AND opioid_drug_flag = 'Y'
+--Answer: see above query, 637 total rows.
 
-	
+--B. Next, report the number of claims per drug per prescriber. Be sure to include all combinations, whether or not the prescriber had any claims. You should report the npi, the drug name, and the number of claims (total_claim_count).
+SELECT prescriber.npi, drug.drug_name, SUM(prescription.total_claim_count)
+FROM prescriber
+CROSS JOIN drug
+LEFT JOIN prescription
+ON prescriber.npi = prescription.npi
+WHERE specialty_description = 'Pain Management'
+	AND nppes_provider_city = 'NASHVILLE'
+	AND opioid_drug_flag = 'Y'
+GROUP BY prescriber.npi, drug.drug_name
+--Answer: see above query, 637 total rows.
+
+--C.Finally, if you have not done so already, fill in any missing values for total_claim_count with 0. Hint - Google the COALESCE function.
+SELECT prescriber.npi, drug.drug_name, SUM(COALESCE(prescription.total_claim_count, '0'))
+FROM prescriber
+CROSS JOIN drug
+LEFT JOIN prescription
+ON prescriber.npi = prescription.npi
+WHERE specialty_description = 'Pain Management'
+	AND nppes_provider_city = 'NASHVILLE'
+	AND opioid_drug_flag = 'Y'
+GROUP BY prescriber.npi, drug.drug_name
+--ANSWER: Added COALESCE to total_claim_count.
+
+
 
 
 
