@@ -117,6 +117,90 @@ ORDER BY SUM(population.population) DESC;
 
 --C. What is the largest (in terms of population) county which is not included in a CBSA? Report the county name and population.
 --sub query counties not in cbsa???
-SELECT population.population
+SELECT fips_county.county, population.population
+FROM fips_county
+	LEFT JOIN population
+	ON fips_county.fipscounty = population.fipscounty
+	LEFT JOIN cbsa
+	ON fips_county.fipscounty = cbsa.fipscounty
+WHERE fips_county.county NOT IN (
+		SELECT fipscounty
+		FROM cbsa)
+		AND population.population IS NOT NULL
+ORDER BY population DESC;
+--Answer: Shelby, Population = 937847
+
+--Question 6.
+--A. Find all rows in the prescription table where total_claims is at least 3000. Report the drug_name and the total_claim_count.
+SELECT drug_name, total_claim_count
+FROM prescription
+WHERE total_claim_count >= 3000
+ORDER BY total_claim_count DESC;
+--ANSWER 
+/*"OXYCODONE HCL"	4538
+"LISINOPRIL"	3655
+"GABAPENTIN"	3531
+"HYDROCODONE-ACETAMINOPHEN"	3376
+"LEVOTHYROXINE SODIUM"	3138
+"LEVOTHYROXINE SODIUM"	3101
+"MIRTAZAPINE"	3085
+"FUROSEMIDE"	3083
+"LEVOTHYROXINE SODIUM"	3023*/
+
+--B. For each instance that you found in part a, add a column that indicates whether the drug is an opioid.
+SELECT p.drug_name, p.total_claim_count,
+	CASE
+	WHEN d.opioid_drug_flag = 'Y' THEN 'Opioid'
+	ELSE 'Not An Opioid'
+	END AS opioid_or_not 
+FROM prescription AS p
+	INNER JOIN drug AS d
+	ON p.drug_name = d.drug_name
+WHERE p.total_claim_count >= 3000
+ORDER BY p.total_claim_count DESC;
+--Answer 
+/*"OXYCODONE HCL"	4538	"Opioid"
+"LISINOPRIL"	3655	"Not An Opioid"
+"GABAPENTIN"	3531	"Not An Opioid"
+"HYDROCODONE-ACETAMINOPHEN"	3376	"Opioid"
+"LEVOTHYROXINE SODIUM"	3138	"Not An Opioid"
+"LEVOTHYROXINE SODIUM"	3101	"Not An Opioid"
+"MIRTAZAPINE"	3085	"Not An Opioid"
+"FUROSEMIDE"	3083	"Not An Opioid"
+"LEVOTHYROXINE SODIUM"	3023	"Not An Opioid"*/
+
+--C. Add another column to you answer from the previous part which gives the prescriber first and last name associated with each row.
+SELECT prescriber.nppes_provider_first_name,
+	prescriber.nppes_provider_last_org_name,
+	p.drug_name, 
+	p.total_claim_count,
+	CASE
+	WHEN d.opioid_drug_flag = 'Y' THEN 'Opioid'
+	ELSE 'Not An Opioid'
+	END AS opioid_or_not 
+FROM prescription AS p
+	INNER JOIN drug AS d
+	ON p.drug_name = d.drug_name
+	INNER JOIN prescriber
+	ON p.npi = prescriber.npi
+WHERE p.total_claim_count >= 3000
+ORDER BY p.total_claim_count DESC;
+--ANSWER
+/*"DAVID"	"COFFEY"	"OXYCODONE HCL"	4538	"Opioid"
+"BRUCE"	"PENDLEY"	"LISINOPRIL"	3655	"Not An Opioid"
+"BRUCE"	"PENDLEY"	"GABAPENTIN"	3531	"Not An Opioid"
+"DAVID"	"COFFEY"	"HYDROCODONE-ACETAMINOPHEN"	3376	"Opioid"
+"DEAVER"	"SHATTUCK"	"LEVOTHYROXINE SODIUM"	3138	"Not An Opioid"
+"ERIC"	"HASEMEIER"	"LEVOTHYROXINE SODIUM"	3101	"Not An Opioid"
+"BRUCE"	"PENDLEY"	"MIRTAZAPINE"	3085	"Not An Opioid"
+"MICHAEL"	"COX"	"FUROSEMIDE"	3083	"Not An Opioid"
+"BRUCE"	"PENDLEY"	"LEVOTHYROXINE SODIUM"	3023	"Not An Opioid"*/
+
+--Question 7 The goal of this exercise is to generate a full list of all pain management specialists in Nashville and the number of claims they had for each opioid. **Hint:** The results from all 3 parts will have 637 rows.
+
+--A. First, create a list of all npi/drug_name combinations for pain management specialists (specialty_description = 'Pain Management) in the city of Nashville (nppes_provider_city = 'NASHVILLE'), where the drug is an opioid (opiod_drug_flag = 'Y'). **Warning:** Double-check your query before running it. You will only need to use the prescriber and drug tables since you don't need the claims numbers yet.
+
+	
+
 
 
