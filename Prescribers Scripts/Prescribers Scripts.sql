@@ -49,7 +49,32 @@ ORDER BY SUM(prescription.total_claim_count) DESC
 LIMIT 10;
 --Answer: Nurse Practicioner
 
---C. 
+--C.  **Challenge Question:** Are there any specialties that appear in the prescriber table that have no associated prescriptions in the prescription table?
+
+SELECT prescriber.specialty_description --did not return a value
+FROM prescriber
+	LEFT JOIN prescription
+	ON prescriber.npi = prescription.npi
+WHERE prescriber.npi IS NULL
+
+SELECT specialty_description --query run time too long
+FROM prescriber
+WHERE npi NOT IN (
+	SELECT npi
+	FROM prescription)
+	
+SELECT specialty_description --did not return a value
+FROM prescriber
+WHERE NOT EXISTS
+	(SELECT prescription.npi
+	FROM prescription
+	LEFT JOIN prescriber
+	ON prescription.npi = prescriber.npi)
+	
+WITH cte AS (
+	SELECT npi
+	FROM )
+	
 
 --Question 3.
 --A. Which drug (generic_name) had the highest total drug cost?
