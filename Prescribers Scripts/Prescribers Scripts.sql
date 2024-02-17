@@ -71,9 +71,71 @@ WHERE NOT EXISTS
 	LEFT JOIN prescriber
 	ON prescription.npi = prescriber.npi)
 	
-WITH cte AS (
-	SELECT npi
-	FROM )
+SELECT prescriber.specialty_description, SUM(prescription.total_claim_count) AS total_claims
+FROM prescriber
+LEFT JOIN prescription
+ON prescriber.npi = prescription.npi
+GROUP BY prescriber.specialty_description
+HAVING SUM(prescription.total_claim_count) IS NULL
+ORDER BY prescriber.specialty_description;
+--Answer (FROM REVIEW) above query.
+
+--D. **Difficult Bonus:** *Do not attempt until you have solved all other problems!* For each specialty, report the percentage of total claims by that specialty which are for opioids. Which specialties have a high percentage of opioids?
+SELECT
+	specialty_description,
+	SUM(
+		CASE WHEN opioid_drug_flag = 'Y' THEN total_claim_count
+		ELSE 0
+	END
+	) as opioid_claims,
+	
+	SUM(total_claim_count) AS total_claims,
+	
+	SUM(
+		CASE WHEN opioid_drug_flag = 'Y' THEN total_claim_count
+		ELSE 0
+	END
+	) * 100.0 /  SUM(total_claim_count) AS opioid_percentage
+FROM prescriber
+INNER JOIN prescription
+USING(npi)
+INNER JOIN drug
+USING(drug_name)
+GROUP BY specialty_description
+--order by specialty_description;
+order by opioid_percentage desc
+--Answer: DIBRAN'S Answer above.
+WITH claims AS 
+	(SELECT
+		pr.specialty_description,
+		SUM(rx.total_claim_count) AS total_claims
+	FROM prescriber AS pr
+	INNER JOIN prescription AS rx
+	USING(npi)
+	INNER JOIN drug
+	USING (drug_name)
+	GROUP BY pr.specialty_description),
+-- second CTE for total opioid claims
+opioid AS
+	(SELECT
+		pr.specialty_description,
+		SUM(rx.total_claim_count) AS total_opioid
+	FROM prescriber AS pr
+	INNER JOIN prescription AS rx
+	USING(npi)
+	INNER JOIN drug
+	USING (drug_name)
+	WHERE drug.opioid_drug_flag ='Y'
+	GROUP BY pr.specialty_description)
+--main query
+SELECT
+	claims.specialty_description,
+	COALESCE(ROUND((opioid.total_opioid / claims.total_claims * 100),2),0) AS perc_opioid
+FROM claims
+LEFT JOIN opioid
+USING(specialty_description)
+ORDER BY perc_opioid DESC;
+--Answer: MATT'S Answer above.
 	
 
 --Question 3.
@@ -88,7 +150,7 @@ LIMIT 10;
 --Answer: INSULIN GLARGINE,HUM.REC.ANLOG
 
 --B. Which drug (generic_name) has the hightest total cost per day? **Bonus: Round your cost per day column to 2 decimal places. Google ROUND to see how this works.**
---This maybe?
+--This maybe? NOT correct.
 SELECT drug.generic_name, ROUND(SUM((prescription.total_drug_cost)/30),2)
 FROM prescription
 	INNER JOIN drug
@@ -96,7 +158,15 @@ FROM prescription
 GROUP BY drug.generic_name
 ORDER BY SUM((prescription.total_drug_cost)/30) DESC
 LIMIT 10;
---Anser: INSULIN GLARGINE,HUM.REC.ANLOG
+--Corrected query:
+SELECT drug.generic_name, ROUND(SUM(prescription.total_drug_cost)/SUM(prescription.total_day_supply),2)
+FROM prescription
+	INNER JOIN drug
+	ON prescription.drug_name = drug.drug_name
+GROUP BY drug.generic_name
+ORDER BY ROUND(SUM(prescription.total_drug_cost)/SUM(prescription.total_day_supply),2) DESC
+LIMIT 10;								
+--Answer: "C1 ESTERASE INHIBITOR"	3495.22
 
 --Question 4.
 --A. For each drug in the drug table, return the drug name and then a column named 'drug_type' which says 'opioid' for drugs which have opioid_drug_flag = 'Y', says 'antibiotic' for those drugs which have antibiotic_drug_flag = 'Y', and says 'neither' for all other drugs. **Hint:** You may want to use a CASE expression for this. See https://www.postgresqltutorial.com/postgresql-tutorial/postgresql-case/ 
@@ -128,7 +198,14 @@ ORDER BY total_drug_cost DESC;
 SELECT COUNT(cbsa)
 FROM cbsa
 WHERE cbsaname LIKE '%TN%'
---Answer: 56
+--Answer: 56 (NOT CORRECT, there are duplicates not represented in fips_county)
+
+SELECT COUNT(*)
+FROM cbsa
+INNER JOIN fips_county
+USING (fipscounty)
+WHERE state = 'TN'
+--Answer 42 (CORRECT)
 
 --B. Which cbsa has the largest combined population? Which has the smallest? Report the CBSA name and total population.
 SELECT cbsa.cbsaname, SUM(population.population)
@@ -144,16 +221,16 @@ ORDER BY SUM(population.population) DESC;
 --sub query counties not in cbsa???
 SELECT fips_county.county, population.population
 FROM fips_county
-	LEFT JOIN population
+	INNER JOIN population
 	ON fips_county.fipscounty = population.fipscounty
-	LEFT JOIN cbsa
-	ON fips_county.fipscounty = cbsa.fipscounty
-WHERE fips_county.county NOT IN (
+	--LEFT JOIN cbsa
+	--ON fips_county.fipscounty = cbsa.fipscounty
+WHERE fips_county.fipscounty NOT IN (
 		SELECT fipscounty
 		FROM cbsa)
 		AND population.population IS NOT NULL
 ORDER BY population DESC;
---Answer: Shelby, Population = 937847
+--Answer: SEVIER, Population = 95523
 
 --Question 6.
 --A. Find all rows in the prescription table where total_claims is at least 3000. Report the drug_name and the total_claim_count.
@@ -233,11 +310,11 @@ WHERE specialty_description = 'Pain Management'
 --Answer: see above query, 637 total rows.
 
 --B. Next, report the number of claims per drug per prescriber. Be sure to include all combinations, whether or not the prescriber had any claims. You should report the npi, the drug name, and the number of claims (total_claim_count).
-SELECT prescriber.npi, drug.drug_name, SUM(prescription.total_claim_count)
+SELECT prescriber.npi, drug.drug_name, SUM(prescription.total_claim_count) AS total_claims
 FROM prescriber
 CROSS JOIN drug
 LEFT JOIN prescription
-ON prescriber.npi = prescription.npi
+USING (npi, drug_name)
 WHERE specialty_description = 'Pain Management'
 	AND nppes_provider_city = 'NASHVILLE'
 	AND opioid_drug_flag = 'Y'
@@ -245,11 +322,11 @@ GROUP BY prescriber.npi, drug.drug_name
 --Answer: see above query, 637 total rows.
 
 --C.Finally, if you have not done so already, fill in any missing values for total_claim_count with 0. Hint - Google the COALESCE function.
-SELECT prescriber.npi, drug.drug_name, SUM(COALESCE(prescription.total_claim_count, '0'))
+SELECT prescriber.npi, drug.drug_name, SUM(COALESCE(prescription.total_claim_count, '0')) AS total_claims
 FROM prescriber
 CROSS JOIN drug
 LEFT JOIN prescription
-ON prescriber.npi = prescription.npi
+USING (npi, drug_name)
 WHERE specialty_description = 'Pain Management'
 	AND nppes_provider_city = 'NASHVILLE'
 	AND opioid_drug_flag = 'Y'
